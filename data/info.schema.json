@@ -1,0 +1,1070 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectorindex.cloud/schemas/machine-introspection-report.schema.json",
+  "title": "Machine Introspection Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "identity", "os", "hardware", "network", "software", "runtime", "security"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collected_at", "collector", "collection_scope"],
+      "properties": {
+        "collected_at": { "type": "string", "format": "date-time" },
+        "collector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 },
+            "build": { "type": "string" },
+            "commit": { "type": "string" }
+          }
+        },
+        "collection_scope": {
+          "description": "What data classes were collected. Useful for partial runs, privacy gating, or failures.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tier", "includes", "excludes"],
+          "properties": {
+            "tier": {
+              "type": "string",
+              "enum": ["safe", "sensitive", "privileged"]
+            },
+            "includes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "excludes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            }
+          }
+        },
+        "execution_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "user": { "type": "string" },
+            "effective_user": { "type": "string" },
+            "is_admin": { "type": "boolean" },
+            "is_root": { "type": "boolean" },
+            "permissions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            }
+          }
+        },
+        "redaction": {
+          "description": "Optional: record how secrets/sensitive fields were handled.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": { "type": "string" },
+            "applied": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "message"],
+            "properties": {
+              "component": { "type": "string" },
+              "message": { "type": "string" },
+              "details": { "type": "string" }
+            }
+          },
+          "default": []
+        },
+        "report_hash": {
+          "description": "Optional integrity hash for the report content (e.g., sha256).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algo": { "type": "string", "enum": ["sha256", "sha512", "blake3"] },
+            "value": { "type": "string", "minLength": 16 }
+          }
+        }
+      }
+    },
+
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine", "hostname"],
+      "properties": {
+        "machine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "name": { "type": "string" },
+            "tags": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "roles": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            }
+          }
+        },
+        "hostname": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string" },
+        "workgroup": { "type": "string" },
+        "timezone": { "type": "string" },
+        "locale": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "language": { "type": "string" },
+            "encoding": { "type": "string" }
+          }
+        },
+        "uptime_seconds": { "type": "integer", "minimum": 0 },
+        "boot_time": { "type": "string", "format": "date-time" },
+
+        "uuids": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "machine_id": { "type": "string" },
+            "dmi_uuid": { "type": "string" },
+            "product_uuid": { "type": "string" }
+          }
+        },
+
+        "serials": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "system_serial": { "type": "string" },
+            "board_serial": { "type": "string" }
+          }
+        },
+
+        "cloud": {
+          "description": "If this machine is a cloud instance, record provider metadata.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "instance_id": { "type": "string" },
+            "region": { "type": "string" },
+            "zone": { "type": "string" },
+            "account": { "type": "string" },
+            "image_id": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "os": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family"],
+      "properties": {
+        "family": {
+          "type": "string",
+          "enum": ["linux", "windows", "macos", "bsd", "unknown"]
+        },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "build": { "type": "string" },
+        "kernel": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "string" },
+            "release": { "type": "string" },
+            "arch": { "type": "string" },
+            "boot_params": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "modules": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/namedVersion" },
+              "default": []
+            }
+          }
+        },
+        "init_system": { "type": "string" },
+        "security_frameworks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selinux": { "$ref": "#/$defs/featureStatus" },
+            "apparmor": { "$ref": "#/$defs/featureStatus" }
+          }
+        },
+        "virtualization": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hypervisor_detected": { "type": "boolean" },
+            "hypervisor_vendor": { "type": "string" },
+            "cpu_virtualization_supported": { "type": "boolean" },
+            "cpu_virtualization_enabled": { "type": "boolean" }
+          }
+        }
+      }
+    },
+
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "memory", "storage"],
+      "properties": {
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": { "type": "string" },
+            "vendor": { "type": "string" },
+            "architecture": { "type": "string" },
+            "physical_cores": { "type": "integer", "minimum": 1 },
+            "logical_cores": { "type": "integer", "minimum": 1 },
+            "base_mhz": { "type": "number", "minimum": 0 },
+            "max_mhz": { "type": "number", "minimum": 0 },
+            "features": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "total_bytes": { "type": "integer", "minimum": 0 },
+            "swap_total_bytes": { "type": "integer", "minimum": 0 },
+            "dimms": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "slot": { "type": "string" },
+                  "size_bytes": { "type": "integer", "minimum": 0 },
+                  "speed_mts": { "type": "integer", "minimum": 0 },
+                  "type": { "type": "string" }
+                }
+              },
+              "default": []
+            }
+          }
+        },
+        "gpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "present": { "type": "boolean" },
+            "adapters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": { "type": "string" },
+                  "vendor": { "type": "string" },
+                  "vram_bytes": { "type": "integer", "minimum": 0 },
+                  "driver": { "type": "string" },
+                  "compute": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "cuda_version": { "type": "string" },
+                      "rocm_version": { "type": "string" }
+                    }
+                  }
+                }
+              },
+              "default": []
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "volumes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/storageVolume" },
+              "default": []
+            },
+            "filesystems": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/filesystemMount" },
+              "default": []
+            },
+            "encryption": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/encryptionStatus" },
+              "default": []
+            },
+            "health": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/diskHealth" },
+              "default": []
+            }
+          }
+        }
+      }
+    },
+
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interfaces"],
+      "properties": {
+        "interfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/networkInterface" },
+          "default": []
+        },
+        "ip_addresses": {
+          "description": "Convenience aggregate list (can also be derived from interfaces).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ipAddress" },
+          "default": []
+        },
+        "external_ips": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ipAddress" },
+          "default": []
+        },
+        "geoip": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "country": { "type": "string" },
+            "region": { "type": "string" },
+            "city": { "type": "string" },
+            "asn": { "type": "string" },
+            "org": { "type": "string" }
+          }
+        },
+        "dns": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "resolvers": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "search_domains": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            }
+          }
+        },
+        "proxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "http_proxy": { "type": "string" },
+            "https_proxy": { "type": "string" },
+            "no_proxy": { "type": "string" }
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeEntry" },
+          "default": []
+        },
+        "firewall": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "backend": { "type": "string" },
+            "rules_summary": { "type": "string" }
+          }
+        },
+        "vpn": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "active": { "type": "boolean" },
+            "tunnels": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/vpnTunnel" },
+              "default": []
+            }
+          }
+        }
+      }
+    },
+
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "properties": {
+            "PATH": { "type": "string" }
+          }
+        },
+        "package_managers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedVersion" },
+          "default": []
+        },
+        "installed_packages": {
+          "description": "Optional heavy payload. Consider gating by tier.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedVersion" },
+          "default": []
+        },
+        "runtimes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "python": { "$ref": "#/$defs/runtimeList" },
+            "nodejs": { "$ref": "#/$defs/runtimeList" },
+            "java": { "$ref": "#/$defs/runtimeList" },
+            "go": { "$ref": "#/$defs/runtimeList" },
+            "rust": { "$ref": "#/$defs/runtimeList" },
+            "dotnet": { "$ref": "#/$defs/runtimeList" }
+          }
+        },
+        "cli_apps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cliApp" },
+          "default": []
+        },
+        "editors_and_ides": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedVersion" },
+          "default": []
+        },
+        "container_runtimes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedVersion" },
+          "default": []
+        }
+      }
+    },
+
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "opened_ports": {
+          "description": "Listening sockets and associated processes/services.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/listeningSocket" },
+          "default": []
+        },
+        "services": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/serviceStatus" },
+          "default": []
+        },
+        "processes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/processInfo" },
+          "default": []
+        },
+        "resource_usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu_load_1m": { "type": "number", "minimum": 0 },
+            "cpu_load_5m": { "type": "number", "minimum": 0 },
+            "cpu_load_15m": { "type": "number", "minimum": 0 },
+            "memory_used_bytes": { "type": "integer", "minimum": 0 },
+            "disk_read_bytes": { "type": "integer", "minimum": 0 },
+            "disk_write_bytes": { "type": "integer", "minimum": 0 },
+            "net_rx_bytes": { "type": "integer", "minimum": 0 },
+            "net_tx_bytes": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "schedulers": {
+          "description": "Cron / scheduled tasks / Windows Task Scheduler summary.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/scheduledTask" },
+          "default": []
+        },
+        "containers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/containerInfo" },
+          "default": []
+        },
+        "vms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vmInfo" },
+          "default": []
+        }
+      }
+    },
+
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["users", "ssh"],
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/userAccount" },
+          "default": []
+        },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/groupInfo" },
+          "default": []
+        },
+        "ssh": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "config": { "type": "string" },
+            "public_keys": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/sshPublicKey" },
+              "default": []
+            }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "password_policy": { "type": "string" },
+            "last_logins": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/loginEvent" },
+              "default": []
+            },
+            "failed_logins": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/loginEvent" },
+              "default": []
+            }
+          }
+        },
+        "secure_boot": { "$ref": "#/$defs/featureStatus" },
+        "tpm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "present": { "type": "boolean" },
+            "version": { "type": "string" }
+          }
+        },
+        "av_edr": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedVersion" },
+          "default": []
+        },
+        "vulnerability_scan": {
+          "description": "Optional summary; do not embed raw CVE feeds unless needed.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": { "type": "string" },
+            "tool_version": { "type": "string" },
+            "summary": { "type": "string" },
+            "high": { "type": "integer", "minimum": 0 },
+            "medium": { "type": "integer", "minimum": 0 },
+            "low": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+
+    "developer_context": {
+      "description": "Optional, usually sensitive-ish. Helpful for reproducing dev environments.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shells": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedVersion" },
+          "default": []
+        },
+        "shell_config_files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fileRef" },
+          "default": []
+        },
+        "git": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "global_config": { "type": "string" },
+            "known_repos": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/fileRef" },
+              "default": []
+            }
+          }
+        },
+        "api_keys": {
+          "description": "Names only. Never store secret values.",
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+
+    "logs": {
+      "description": "Optional. Often large and sensitive; store summaries by default.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "system_log_summary": { "type": "string" },
+        "boot_errors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "crash_dumps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fileRef" },
+          "default": []
+        },
+        "time_sync": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "backend": { "type": "string" },
+            "sources": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "status": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "sensitive": {
+      "description": "Opt-in section for high-risk items; include only when collection_scope.tier >= sensitive/privileged.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command_history": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/commandHistoryEntry" },
+          "default": []
+        },
+        "recent_connections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/networkConnection" },
+          "default": []
+        },
+        "usb_devices_history": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/deviceRef" },
+          "default": []
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "namedVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "path": { "type": "string" },
+        "vendor": { "type": "string" }
+      }
+    },
+
+    "featureStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "status": { "type": "string" },
+        "details": { "type": "string" }
+      }
+    },
+
+    "ipAddress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address"],
+      "properties": {
+        "address": { "type": "string", "minLength": 1 },
+        "family": { "type": "string", "enum": ["ipv4", "ipv6", "unknown"], "default": "unknown" },
+        "scope": { "type": "string", "enum": ["private", "public", "linklocal", "loopback", "unknown"], "default": "unknown" },
+        "source": { "type": "string", "enum": ["interface", "external", "manual", "unknown"], "default": "unknown" }
+      }
+    },
+
+    "networkInterface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["ethernet", "wifi", "loopback", "virtual", "vpn", "unknown"], "default": "unknown" },
+        "mac": { "type": "string" },
+        "mtu": { "type": "integer", "minimum": 0 },
+        "link_speed_mbps": { "type": "integer", "minimum": 0 },
+        "addresses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ipAddress" },
+          "default": []
+        },
+        "dns": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "resolvers": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        }
+      }
+    },
+
+    "routeEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "destination": { "type": "string" },
+        "gateway": { "type": "string" },
+        "interface": { "type": "string" },
+        "metric": { "type": "integer" }
+      }
+    },
+
+    "vpnTunnel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "properties": {
+        "type": { "type": "string", "enum": ["wireguard", "openvpn", "ipsec", "tailscale", "zerotier", "unknown"] },
+        "name": { "type": "string" },
+        "interface": { "type": "string" },
+        "peers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+
+    "storageVolume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "device": { "type": "string" },
+        "serial": { "type": "string" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "model": { "type": "string" },
+        "type": { "type": "string", "enum": ["hdd", "ssd", "nvme", "virtual", "unknown"], "default": "unknown" },
+        "bus": { "type": "string" }
+      }
+    },
+
+    "filesystemMount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mount_point", "fs_type"],
+      "properties": {
+        "mount_point": { "type": "string" },
+        "fs_type": { "type": "string" },
+        "device": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "total_bytes": { "type": "integer", "minimum": 0 },
+        "used_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "diskHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device"],
+      "properties": {
+        "device": { "type": "string" },
+        "smart_supported": { "type": "boolean" },
+        "smart_overall": { "type": "string" },
+        "wear_level_percent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "temperature_c": { "type": "number" }
+      }
+    },
+
+    "encryptionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "type": { "type": "string" },
+        "details": { "type": "string" }
+      }
+    },
+
+    "runtimeList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version"],
+        "properties": {
+          "version": { "type": "string" },
+          "path": { "type": "string" },
+          "default": { "type": "boolean" }
+        }
+      },
+      "default": []
+    },
+
+    "cliApp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string" },
+        "version": { "type": "string" },
+        "help": {
+          "description": "Capture `--help` output if collected (may be large). Prefer summaries unless needed.",
+          "type": "string"
+        }
+      }
+    },
+
+    "listeningSocket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "port"],
+      "properties": {
+        "protocol": { "type": "string", "enum": ["tcp", "udp"] },
+        "address": { "type": "string", "default": "0.0.0.0" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "process": { "$ref": "#/$defs/processRef" },
+        "service": { "type": "string" }
+      }
+    },
+
+    "processRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pid": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string" },
+        "exe": { "type": "string" },
+        "user": { "type": "string" }
+      }
+    },
+
+    "processInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pid", "name"],
+      "properties": {
+        "pid": { "type": "integer", "minimum": 0 },
+        "ppid": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string" },
+        "exe": { "type": "string" },
+        "cmdline": { "type": "string" },
+        "user": { "type": "string" },
+        "cpu_percent": { "type": "number", "minimum": 0 },
+        "mem_rss_bytes": { "type": "integer", "minimum": 0 },
+        "started_at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "serviceStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["running", "stopped", "failed", "unknown"], "default": "unknown" },
+        "enabled_on_boot": { "type": "boolean" },
+        "details": { "type": "string" }
+      }
+    },
+
+    "scheduledTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "schedule": { "type": "string" },
+        "command": { "type": "string" },
+        "enabled": { "type": "boolean" }
+      }
+    },
+
+    "containerInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "status": { "type": "string" },
+        "ports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+
+    "vmInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "provider": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+
+    "userAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "uid": { "type": "integer", "minimum": 0 },
+        "gid": { "type": "integer", "minimum": 0 },
+        "home": { "type": "string" },
+        "shell": { "type": "string" },
+        "is_admin": { "type": "boolean" },
+        "groups": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "last_login": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "groupInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "gid": { "type": "integer", "minimum": 0 },
+        "members": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+
+    "sshPublicKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "key"],
+      "properties": {
+        "type": { "type": "string" },
+        "key": { "type": "string", "minLength": 32 },
+        "comment": { "type": "string" },
+        "fingerprint": { "type": "string" }
+      }
+    },
+
+    "loginEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user", "time"],
+      "properties": {
+        "user": { "type": "string" },
+        "time": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "result": { "type": "string", "enum": ["success", "failure", "unknown"], "default": "unknown" }
+      }
+    },
+
+    "fileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "hash": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algo": { "type": "string", "enum": ["sha256", "sha512", "blake3"] },
+            "value": { "type": "string" }
+          }
+        },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "modified_at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "commandHistoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "time": { "type": "string", "format": "date-time" },
+        "user": { "type": "string" },
+        "cwd": { "type": "string" },
+        "command": { "type": "string" }
+      }
+    },
+
+    "networkConnection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol": { "type": "string", "enum": ["tcp", "udp"] },
+        "local": { "type": "string" },
+        "remote": { "type": "string" },
+        "state": { "type": "string" },
+        "process": { "$ref": "#/$defs/processRef" }
+      }
+    },
+
+    "deviceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "vendor": { "type": "string" },
+        "product": { "type": "string" },
+        "serial": { "type": "string" }
+      }
+    }
+  }
+}
