@@ -8,6 +8,7 @@ def main():
     parser = argparse.ArgumentParser(description="Collect machine introspection report.")
     parser.add_argument("output", nargs="?", help="Output file path (default: stdout)", default=None)
     parser.add_argument("--pretty", action="store_true", help="Pretty print JSON output")
+    parser.add_argument("--rich", action="store_true", help="Use rich to output colorized JSON (implies --pretty)")
     parser.add_argument("--validate", help="Path to schema file for validation", default=None)
     
     args = parser.parse_args()
@@ -21,20 +22,30 @@ def main():
                 with open(args.validate, 'r') as f:
                     schema = json.load(f)
                 validate(instance=data, schema=schema)
-                # print("Validation successful!", file=sys.stderr)
             except ImportError:
                 print("jsonschema not installed, skipping validation.", file=sys.stderr)
             except Exception as e:
                 print(f"Validation failed: {e}", file=sys.stderr)
                 sys.exit(1)
 
-        output_str = json.dumps(data, indent=2 if args.pretty else None, default=str)
-        
-        if args.output:
-            with open(args.output, 'w') as f:
-                f.write(output_str)
+        if args.rich and not args.output:
+            try:
+                from rich.console import Console
+                from rich.json import JSON
+                console = Console()
+                json_str = json.dumps(data, default=str)
+                console.print(JSON(json_str))
+            except ImportError:
+                print("rich not installed, falling back to standard output.", file=sys.stderr)
+                output_str = json.dumps(data, indent=2 if (args.pretty or args.rich) else None, default=str)
+                print(output_str)
         else:
-            print(output_str)
+            output_str = json.dumps(data, indent=2 if (args.pretty or args.rich) else None, default=str)
+            if args.output:
+                with open(args.output, 'w') as f:
+                    f.write(output_str)
+            else:
+                print(output_str)
             
     except Exception as e:
         print(f"Error collecting data: {e}", file=sys.stderr)
